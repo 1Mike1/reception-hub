@@ -1,0 +1,22 @@
+[
+  {
+    "id": "4fd92f33f8ab9d942358b3766795e20f",
+    "email": "demo@client.com",
+    "password_hash": "212d36cb4863403fccfabf19cdbb0eccdca913f4d6d7430a8cfb9ef1af60b439",
+    "salt": "0b8077b84fd42012e4830c939de471a3",
+    "company_name": "Demo Pest Co",
+    "agent_id": "test_agent_001",
+    "service_area": "Austin TX",
+    "created_at": "2026-03-30T14:59:56.825026+00:00"
+  },
+  {
+    "id": "ddc8653089dc9ed7cf80cb189746c2b1",
+    "email": "testing@gmail.com",
+    "password_hash": "3343a25f7e329959edb9372ce4e317a92a52f94fbdd744275d53cd899c5ab8e4",
+    "salt": "7c11729c8b2160a10c757f4990291086",
+    "company_name": "Testing",
+    "agent_id": "agent_3101kckqn3ppf99a7r1yh230rfv4",
+    "service_area": "IT",
+    "created_at": "2026-03-30T15:04:48.012423+00:00"
+  }
+]
