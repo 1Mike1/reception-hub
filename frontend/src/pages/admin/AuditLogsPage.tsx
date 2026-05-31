@@ -14,9 +14,10 @@ import { CollapsibleFilters } from '@/components/ui/collapsible-filters';
 import { ResizableTableHeader, ResizableTableCell } from '@/components/ui/resizable-table-header';
 import { useResizableColumns } from '@/hooks/use-resizable-columns';
 import { cn } from '@/lib/utils';
-import { mockAuditLogs, mockClients } from '@/data/mockData';
-import { AuditAction, AuditLog } from '@/types';
-import { Search, CalendarIcon } from 'lucide-react';
+import { useAuditLogs } from '@/hooks/use-elevenlabs';
+import type { AuditLogEntry } from '@/services/elevenLabsApi';
+import { AuditAction } from '@/types';
+import { Search, CalendarIcon, Loader2 } from 'lucide-react';
 
 const actionLabels: Record<AuditAction, string> = {
   user_login: 'User Login',
@@ -38,11 +39,16 @@ const actionLabels: Record<AuditAction, string> = {
   webhook_error_acknowledged: 'Webhook Error Acknowledged',
 };
 
-const getActionVariant = (action: AuditAction): 'default' | 'destructive' | 'outline' | 'secondary' | 'success' => {
+const getActionVariant = (action: string): 'default' | 'destructive' | 'outline' | 'secondary' | 'success' => {
   if (['client_suspended', 'service_manually_suspended'].includes(action)) return 'destructive';
   if (['user_login', 'user_logout'].includes(action)) return 'secondary';
   if (['client_created', 'plan_created', 'client_reactivated', 'service_manually_enabled'].includes(action)) return 'success';
   return 'outline';
+};
+
+/** Get label for an action, falling back to the raw action string */
+const getActionLabel = (action: string): string => {
+  return actionLabels[action as AuditAction] || action.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 };
 
 const defaultColumnWidths = {
@@ -61,13 +67,23 @@ export default function AuditLogsPage() {
   const [entityFilter, setEntityFilter] = useState<string>('all');
   const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
   const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
-  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
+  const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   
   const { columnWidths, handleMouseDown } = useResizableColumns(defaultColumnWidths);
 
-  const uniqueActions = [...new Set(mockAuditLogs.map(log => log.action))];
-  const uniqueEntityTypes = [...new Set(mockAuditLogs.map(log => log.entity_type))];
+  // Fetch audit logs from backend
+  const { data: auditData, isLoading } = useAuditLogs({
+    page: currentPage,
+    page_size: ROWS_PER_PAGE,
+    action: actionFilter !== 'all' ? actionFilter : undefined,
+    entity_type: entityFilter !== 'all' ? entityFilter : undefined,
+    search: searchQuery || undefined,
+  });
+
+  const allLogs = auditData?.logs ?? [];
+  const totalEntries = auditData?.total ?? 0;
+  const totalPages = auditData?.total_pages ?? 1;
 
   const activeFiltersCount = [
     actionFilter !== 'all',
@@ -76,39 +92,26 @@ export default function AuditLogsPage() {
     dateTo !== undefined,
   ].filter(Boolean).length;
 
+  // Client-side date filtering (backend handles text/action/entity filters)
   const filteredLogs = useMemo(() => {
-    return mockAuditLogs
-      .filter(log => {
-        const matchesSearch = 
-          log.admin_email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          log.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (log.details.reason?.toLowerCase().includes(searchQuery.toLowerCase()));
-        const matchesAction = actionFilter === 'all' || log.action === actionFilter;
-        const matchesEntity = entityFilter === 'all' || log.entity_type === entityFilter;
-        
-        const logDate = new Date(log.timestamp);
-        let matchesDateRange = true;
-        if (dateFrom && dateTo) {
-          matchesDateRange = isWithinInterval(logDate, {
-            start: startOfDay(dateFrom),
-            end: endOfDay(dateTo),
-          });
-        } else if (dateFrom) {
-          matchesDateRange = logDate >= startOfDay(dateFrom);
-        } else if (dateTo) {
-          matchesDateRange = logDate <= endOfDay(dateTo);
-        }
-        
-        return matchesSearch && matchesAction && matchesEntity && matchesDateRange;
-      })
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-  }, [searchQuery, actionFilter, entityFilter, dateFrom, dateTo]);
+    if (!dateFrom && !dateTo) return allLogs;
+    return allLogs.filter(log => {
+      const logDate = new Date(log.timestamp);
+      if (dateFrom && dateTo) {
+        return isWithinInterval(logDate, {
+          start: startOfDay(dateFrom),
+          end: endOfDay(dateTo),
+        });
+      } else if (dateFrom) {
+        return logDate >= startOfDay(dateFrom);
+      } else if (dateTo) {
+        return logDate <= endOfDay(dateTo);
+      }
+      return true;
+    });
+  }, [allLogs, dateFrom, dateTo]);
 
-  const totalPages = Math.ceil(filteredLogs.length / ROWS_PER_PAGE);
-  const paginatedLogs = useMemo(() => {
-    const startIndex = (currentPage - 1) * ROWS_PER_PAGE;
-    return filteredLogs.slice(startIndex, startIndex + ROWS_PER_PAGE);
-  }, [filteredLogs, currentPage]);
+  const paginatedLogs = filteredLogs;
 
   const handleFilterChange = useCallback((setter: (value: any) => void, value: any) => {
     setter(value);
@@ -117,13 +120,15 @@ export default function AuditLogsPage() {
 
   const getEntityName = (entityType: string, entityId: string) => {
     if (entityType === 'client') {
-      const client = mockClients.find(c => c.id === entityId);
-      return client?.company_name || `Client #${entityId}`;
+      return `Client #${entityId.slice(0, 8)}`;
     }
     if (entityType === 'user') {
-      return `User #${entityId}`;
+      return `User #${entityId.slice(0, 8)}`;
     }
-    return `${entityType} #${entityId}`;
+    if (entityType === 'agent') {
+      return `Agent #${entityId.slice(0, 8)}`;
+    }
+    return `${entityType} #${entityId.slice(0, 8)}`;
   };
 
   const formatTimestamp = (timestamp: string) => {
@@ -141,7 +146,7 @@ export default function AuditLogsPage() {
     const headers = ['Event ID', 'Event', 'Actor', 'Timestamp', 'Description', 'IP Address', 'Entity Type', 'Entity ID', 'Reason', 'Previous Value', 'New Value'];
     const rows = filteredLogs.map(log => [
       log.id,
-      actionLabels[log.action],
+      actionLabels[log.action as AuditAction] || log.action,
       log.admin_email,
       formatTimestamp(log.timestamp),
       log.description,
@@ -169,7 +174,7 @@ export default function AuditLogsPage() {
   const exportToJSON = () => {
     const exportData = filteredLogs.map(log => ({
       id: log.id,
-      event: actionLabels[log.action],
+      event: actionLabels[log.action as AuditAction] || log.action,
       action: log.action,
       actor: log.admin_email,
       admin_id: log.admin_id,
@@ -279,9 +284,9 @@ export default function AuditLogsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Actions</SelectItem>
-                  {uniqueActions.map(action => (
+                  {Object.entries(actionLabels).map(([action, label]) => (
                     <SelectItem key={action} value={action}>
-                      {actionLabels[action]}
+                      {label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -295,11 +300,10 @@ export default function AuditLogsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Entities</SelectItem>
-                  {uniqueEntityTypes.map(type => (
-                    <SelectItem key={type} value={type}>
-                      {type.charAt(0).toUpperCase() + type.slice(1)}
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                  <SelectItem value="agent">Agent</SelectItem>
+                  <SelectItem value="plan">Plan</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -369,6 +373,13 @@ export default function AuditLogsPage() {
       {/* Logs Table */}
       <Card>
         <CardContent className="p-0">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
+              <span className="text-sm text-muted-foreground">Loading audit logs...</span>
+            </div>
+          ) : (
+          <>
           {/* Mobile View */}
           <div className="md:hidden divide-y divide-border">
             {paginatedLogs.length === 0 ? (
@@ -384,7 +395,7 @@ export default function AuditLogsPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <Badge variant={getActionVariant(log.action)}>
-                      {actionLabels[log.action]}
+                      {getActionLabel(log.action)}
                     </Badge>
                     <span className="text-xs text-muted-foreground whitespace-nowrap font-mono">
                       {format(new Date(log.timestamp), 'MMM d, h:mm a')}
@@ -458,7 +469,7 @@ export default function AuditLogsPage() {
                     >
                       <ResizableTableCell width={columnWidths.event}>
                         <Badge variant={getActionVariant(log.action)} className="whitespace-nowrap">
-                          {actionLabels[log.action]}
+                          {getActionLabel(log.action)}
                         </Badge>
                       </ResizableTableCell>
                       <ResizableTableCell width={columnWidths.actor}>
@@ -481,6 +492,8 @@ export default function AuditLogsPage() {
               </tbody>
             </table>
           </div>
+          </>
+          )}
         </CardContent>
       </Card>
 
@@ -488,7 +501,7 @@ export default function AuditLogsPage() {
       {totalPages > 1 && (
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="text-sm text-muted-foreground">
-            Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, filteredLogs.length)} of {filteredLogs.length} entries
+            Showing {((currentPage - 1) * ROWS_PER_PAGE) + 1} to {Math.min(currentPage * ROWS_PER_PAGE, totalEntries)} of {totalEntries} entries
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -530,9 +543,9 @@ export default function AuditLogsPage() {
         </div>
       )}
 
-      {totalPages <= 1 && (
+      {totalPages <= 1 && !isLoading && (
         <div className="text-sm text-muted-foreground text-center">
-          Showing {filteredLogs.length} of {mockAuditLogs.length} log entries
+          {totalEntries === 0 ? 'No audit logs recorded yet. Actions will appear here as they occur.' : `Showing ${totalEntries} log entries`}
         </div>
       )}
 
@@ -544,7 +557,7 @@ export default function AuditLogsPage() {
               <SheetHeader className="space-y-4">
                 <div>
                   <Badge variant={getActionVariant(selectedLog.action)} className="mb-2">
-                    {actionLabels[selectedLog.action]}
+                    {getActionLabel(selectedLog.action)}
                   </Badge>
                   <SheetTitle className="text-xl">{selectedLog.description}</SheetTitle>
                 </div>
@@ -565,7 +578,7 @@ export default function AuditLogsPage() {
                     </div>
                     <div className="flex justify-between py-2 border-b">
                       <span className="text-muted-foreground">Action</span>
-                      <span>{actionLabels[selectedLog.action]}</span>
+                      <span>{getActionLabel(selectedLog.action)}</span>
                     </div>
                     <div className="flex justify-between py-2 border-b">
                       <span className="text-muted-foreground">Entity Type</span>

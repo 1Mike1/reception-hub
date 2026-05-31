@@ -33,6 +33,7 @@ CLIENTS_JSON_PATH = os.path.join(_THIS_DIR, "clients.json")
 PLANS_JSON_PATH = os.path.join(_THIS_DIR, "plans.json")
 SENT_EMAILS_JSON_PATH = os.path.join(_THIS_DIR, "sent_emails.json")
 ADMINS_JSON_PATH = os.path.join(_THIS_DIR, "admins.json")
+AUDIT_LOGS_JSON_PATH = os.path.join(_THIS_DIR, "audit_logs.json")
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -166,6 +167,7 @@ class _Database:
         self.plans: Any = None
         self.sent_emails: Any = None
         self.admins: Any = None
+        self.audit_logs: Any = None
 
     def init(self) -> None:
         if self._initialized:
@@ -185,6 +187,7 @@ class _Database:
                 self.plans = MongoCollection(mdb["plans"], id_field="id")
                 self.sent_emails = MongoCollection(mdb["sent_emails"], id_field="conversation_id")
                 self.admins = MongoCollection(mdb["admins"], id_field="id")
+                self.audit_logs = MongoCollection(mdb["audit_logs"], id_field="id")
                 self.backend = "mongodb"
                 logger.info(f"[DB] Connected to MongoDB database '{db_name}'")
 
@@ -203,6 +206,7 @@ class _Database:
         self.plans = JsonCollection(PLANS_JSON_PATH, id_field="id")
         self.sent_emails = JsonCollection(SENT_EMAILS_JSON_PATH, id_field="conversation_id")
         self.admins = JsonCollection(ADMINS_JSON_PATH, id_field="id")
+        self.audit_logs = JsonCollection(AUDIT_LOGS_JSON_PATH, id_field="id")
         self.backend = "json"
         logger.info("[DB] Using JSON file backend")
 

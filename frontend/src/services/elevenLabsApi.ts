@@ -326,3 +326,49 @@ export async function updateAgentConfig(agentId: string, config: AgentConfigUpda
   }
   return response.json() as Promise<ELAgent>;
 }
+
+// ─── Audit Logs ──────────────────────────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: string;
+  timestamp: string;
+  admin_id: string;
+  admin_email: string;
+  entity_type: string;
+  entity_id: string;
+  action: string;
+  description: string;
+  ip_address: string;
+  details: {
+    previous_value?: any;
+    new_value?: any;
+    reason?: string;
+  };
+}
+
+export interface AuditLogsResponse {
+  logs: AuditLogEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface AuditLogFilters {
+  action?: string;
+  entity_type?: string;
+  search?: string;
+  page?: number;
+  page_size?: number;
+}
+
+/** GET /audit-logs → fetch audit logs with optional filters */
+export async function getAuditLogs(filters?: AuditLogFilters): Promise<AuditLogsResponse> {
+  const params = new URLSearchParams();
+  if (filters?.page) params.set('page', String(filters.page));
+  if (filters?.page_size) params.set('page_size', String(filters.page_size));
+  if (filters?.action && filters.action !== 'all') params.set('action', filters.action);
+  if (filters?.entity_type && filters.entity_type !== 'all') params.set('entity_type', filters.entity_type);
+  if (filters?.search) params.set('search', filters.search);
+  return fetchBackend<AuditLogsResponse>(`/audit-logs?${params.toString()}`);
+}

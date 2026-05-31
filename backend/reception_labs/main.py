@@ -50,6 +50,47 @@ _confirmed_sessions: set = set()
 ELEVENLABS_BASE = os.getenv("ELEVENLABS_BASE_URL", "https://api.us.elevenlabs.io/v1")
 
 
+# ─── Audit Logging Helper ─────────────────────────────────────────────────────
+
+def _record_audit(
+    action: str,
+    admin_id: str,
+    admin_email: str,
+    entity_type: str,
+    entity_id: str,
+    description: str,
+    ip_address: str = "server",
+    details: Optional[Dict[str, Any]] = None,
+) -> None:
+    """Record an audit log entry to the database."""
+    entry = {
+        "id": secrets.token_hex(16),
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "admin_id": admin_id,
+        "admin_email": admin_email,
+        "entity_type": entity_type,
+        "entity_id": entity_id,
+        "action": action,
+        "description": description,
+        "ip_address": ip_address,
+        "details": details or {},
+    }
+    try:
+        db.audit_logs.insert(entry)
+    except Exception as e:
+        logger.error(f"Failed to record audit log: {e}")
+
+
+def _get_client_ip(request: Request) -> str:
+    """Extract client IP from request headers (X-Forwarded-For or direct)."""
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host
+    return "unknown"
+
+
 def _headers() -> dict:
     api_key = os.getenv("ELEVENLABS_API_KEY")
     if not api_key:
@@ -189,7 +230,7 @@ class AgentArchiveRequest(BaseModel):
     archived: bool
 
 @app.patch("/agents/{agent_id}/archive")
-async def set_agent_archived(agent_id: str, body: AgentArchiveRequest):
+async def set_agent_archived(agent_id: str, body: AgentArchiveRequest, request: Request):
     """Set an agent's archived status (archive or restore to active)."""
     try:
         response = await _client().patch(
@@ -205,6 +246,17 @@ async def set_agent_archived(agent_id: str, body: AgentArchiveRequest):
                 response=response,
             )
         logger.info(f"Agent {agent_id} archived={body.archived}")
+        action = "client_suspended" if body.archived else "client_reactivated"
+        _record_audit(
+            action=action,
+            admin_id="admin",
+            admin_email="admin",
+            entity_type="agent",
+            entity_id=agent_id,
+            description=f"Agent {agent_id} {'archived' if body.archived else 'reactivated'}",
+            ip_address=_get_client_ip(request),
+            details={"new_value": {"archived": body.archived}},
+        )
         return response.json()
     except httpx.RequestError as e:
         logger.error(f"Request error: {e}")
@@ -216,7 +268,7 @@ async def set_agent_archived(agent_id: str, body: AgentArchiveRequest):
 
 
 @app.delete("/agents/{agent_id}")
-async def delete_agent(agent_id: str):
+async def delete_agent(agent_id: str, request: Request):
     """Delete an agent via ElevenLabs API."""
     try:
         response = await _client().delete(
@@ -231,6 +283,16 @@ async def delete_agent(agent_id: str):
                 response=response,
             )
         logger.info(f"Agent {agent_id} deleted")
+        _record_audit(
+            action="client_suspended",
+            admin_id="admin",
+            admin_email="admin",
+            entity_type="agent",
+            entity_id=agent_id,
+            description=f"Agent {agent_id} permanently deleted",
+            ip_address=_get_client_ip(request),
+            details={"reason": "Agent deleted by admin"},
+        )
         return {"status": "deleted", "agent_id": agent_id}
     except httpx.RequestError as e:
         logger.error(f"Request error: {e}")
@@ -474,6 +536,51 @@ async def health_check():
     return {"status": "healthy"}
 
 
+# ─── Audit Logs Endpoint ──────────────────────────────────────────────────────
+
+@app.get("/audit-logs")
+async def get_audit_logs(
+    page: int = 1,
+    page_size: int = 50,
+    action: Optional[str] = None,
+    entity_type: Optional[str] = None,
+    search: Optional[str] = None,
+):
+    """Get audit logs with optional filtering and pagination."""
+    all_logs = db.audit_logs.find_all()
+    
+    # Sort by timestamp descending (most recent first)
+    all_logs.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    # Apply filters
+    if action and action != "all":
+        all_logs = [log for log in all_logs if log.get("action") == action]
+    if entity_type and entity_type != "all":
+        all_logs = [log for log in all_logs if log.get("entity_type") == entity_type]
+    if search:
+        search_lower = search.lower()
+        all_logs = [
+            log for log in all_logs
+            if search_lower in log.get("admin_email", "").lower()
+            or search_lower in log.get("description", "").lower()
+            or search_lower in (log.get("details", {}).get("reason") or "").lower()
+        ]
+    
+    # Paginate
+    total = len(all_logs)
+    start = (page - 1) * page_size
+    end = start + page_size
+    paginated = all_logs[start:end]
+    
+    return {
+        "logs": paginated,
+        "total": total,
+        "page": page,
+        "page_size": page_size,
+        "total_pages": (total + page_size - 1) // page_size if total > 0 else 1,
+    }
+
+
 # ─── Client JSON Auth ─────────────────────────────────────────────────────────
 # (path retained for backwards compat / migration; data now flows through db.clients)
 CLIENTS_JSON_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clients.json")
@@ -536,7 +643,7 @@ async def get_clients():
 
 
 @app.post("/auth/client/register", response_model=ClientResponse)
-async def client_register(req: ClientRegisterRequest):
+async def client_register(req: ClientRegisterRequest, request: Request):
     """Register a new client account (stored in clients.json)"""
     if not req.agent_id.strip():
         raise HTTPException(status_code=400, detail="agent_id is required")
@@ -565,6 +672,17 @@ async def client_register(req: ClientRegisterRequest):
         client_email=client["email"],
         company_name=client["company_name"],
         stripe_payment_id="free_signup",
+    )
+
+    _record_audit(
+        action="client_created",
+        admin_id="system",
+        admin_email="system",
+        entity_type="client",
+        entity_id=client["id"],
+        description=f"New client registered: {client['company_name']}",
+        ip_address=_get_client_ip(request),
+        details={"new_value": {"company_name": client["company_name"], "email": client["email"]}},
     )
 
     return ClientResponse(**{k: v for k, v in client.items() if k not in ("password_hash", "salt")})
@@ -633,12 +751,14 @@ class ClientUpdateRequest(BaseModel):
 
 
 @app.patch("/clients/{client_id}", response_model=ClientResponse)
-async def update_client(client_id: str, req: ClientUpdateRequest):
+async def update_client(client_id: str, req: ClientUpdateRequest, request: Request):
     """Update client information (admin endpoint)"""
     clients = _load_clients()
     client = next((c for c in clients if c["id"] == client_id), None)
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
+    
+    previous_values = {k: client.get(k) for k in ("email", "company_name", "agent_id", "service_area")}
     
     # Check if new email is already taken
     if req.email and req.email.lower() != client["email"].lower():
@@ -657,6 +777,18 @@ async def update_client(client_id: str, req: ClientUpdateRequest):
     
     _save_clients(clients)
     logger.info(f"Client {client_id} updated by admin")
+    
+    new_values = {k: client.get(k) for k in ("email", "company_name", "agent_id", "service_area")}
+    _record_audit(
+        action="client_updated",
+        admin_id="admin",
+        admin_email="admin",
+        entity_type="client",
+        entity_id=client_id,
+        description=f"Client {client.get('company_name', client_id)} updated",
+        ip_address=_get_client_ip(request),
+        details={"previous_value": previous_values, "new_value": new_values},
+    )
     
     return ClientResponse(**{k: v for k, v in client.items() if k not in ("password_hash", "salt")})
 
@@ -710,7 +842,7 @@ async def admin_register(req: AdminRegisterRequest):
 
 
 @app.post("/auth/admin/login", response_model=AdminResponse)
-async def admin_login(req: AdminLoginRequest):
+async def admin_login(req: AdminLoginRequest, request: Request):
     """Authenticate an admin against the admins collection/JSON."""
     admins = _load_admins()
     admin = next((a for a in admins if a["email"].lower() == req.email.lower().strip()), None)
@@ -719,6 +851,16 @@ async def admin_login(req: AdminLoginRequest):
     if _hash_password(req.password, admin["salt"]) != admin["password_hash"]:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     logger.info(f"Admin logged in: {admin['email']}")
+    _record_audit(
+        action="user_login",
+        admin_id=admin["id"],
+        admin_email=admin["email"],
+        entity_type="user",
+        entity_id=admin["id"],
+        description=f"Admin {admin['email']} logged in",
+        ip_address=_get_client_ip(request),
+        details={"reason": "Successful authentication via email/password"},
+    )
     return AdminResponse(**{k: v for k, v in admin.items() if k not in ("password_hash", "salt")})
 
 

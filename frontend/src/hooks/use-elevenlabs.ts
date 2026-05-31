@@ -16,8 +16,9 @@ import {
   deleteConversation,
   updateAgentConfig,
   calculateLlmUsage,
+  getAuditLogs,
 } from '@/services/elevenLabsApi';
-import type { ConversationFilters, AgentConfigUpdate, LlmUsageCalculateRequest } from '@/services/elevenLabsApi';
+import type { ConversationFilters, AgentConfigUpdate, LlmUsageCalculateRequest, AuditLogFilters } from '@/services/elevenLabsApi';
 
 /** Fetch all ElevenLabs agents (= the client list) */
 export function useAgents() {
@@ -129,5 +130,15 @@ export function useLlmUsageCalculate(agentId?: string, body?: LlmUsageCalculateR
     enabled: Boolean(agentId),
     staleTime: 10 * 60 * 1000, // 10 min – LLM pricing rarely changes
     retry: 1,
+  });
+}
+
+/** Fetch audit logs with optional filters */
+export function useAuditLogs(filters?: AuditLogFilters) {
+  return useQuery({
+    queryKey: ['audit-logs', filters ?? {}],
+    queryFn: () => getAuditLogs(filters),
+    staleTime: 30 * 1000, // 30 seconds
+    retry: 2,
   });
 }
