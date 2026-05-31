@@ -1,0 +1,416 @@
+# ================================
+# Sales Bot USA - .gitignore
+# ================================
+
+# ─── Environment Variables ────────────────────────────────────────────────────
+*.env
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+.env.test
+!.env.example
+!.env.docker  # Keep template
+
+# ─── Python ───────────────────────────────────────────────────────────────────
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+backend/venv/
+backend/env/
+backend/reception_labs/venv/
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+pytestdebug.log
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery stuff
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre type checker
+.pyre/
+
+# ─── Node.js / Frontend ───────────────────────────────────────────────────────
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+jspm_packages/
+
+# Build outputs
+dist/
+dist-ssr/
+frontend/dist/
+frontend/build/
+build/
+.next/
+out/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Lock files (optional - uncomment if needed)
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+bun.lockb
+
+# Testing
+coverage/
+.nyc_output
+
+# Misc
+*.local
+.cache/
+.parcel-cache/
+.eslintcache
+.stylelintcache
+
+# ─── Database Files ───────────────────────────────────────────────────────────
+# JSON database files (backend JSON mode)
+backend/reception_labs/clients.json
+backend/reception_labs/plans.json
+backend/reception_labs/sent_emails.json
+backend/reception_labs/admins.json
+
+# But keep test files for reference (optional - comment out to ignore them)
+# backend/*.json
+
+# MongoDB data directories (if running locally)
+data/db/
+mongo-data/
+mongodb-data/
+
+# Database backups
+*.sql
+*.dump
+backups/
+*.backup
+
+# ─── Docker ───────────────────────────────────────────────────────────────────
+# Docker files to ignore
+.dockerignore
+docker-compose.override.yml
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+*.log.*
+log/
+backend/*.log
+frontend/*.log
+/var/log/salesbot/
+
+# ─── IDE / Editor ─────────────────────────────────────────────────────────────
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+.history/
+*.vsix
+
+# JetBrains IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+.*.sw[a-z]
+
+# Emacs
+*~
+\#*\#
+/.emacs.desktop
+/.emacs.desktop.lock
+*.elc
+
+# ─── OS Specific ──────────────────────────────────────────────────────────────
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+.directory
+.Trash-*
+.nfs*
+
+# ─── SSL / Certificates ───────────────────────────────────────────────────────
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+ssl/
+certs/
+
+# ─── Temporary Files ──────────────────────────────────────────────────────────
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+*~
+tmp/
+temp/
+
+# ─── Sensitive Data ───────────────────────────────────────────────────────────
+# API keys and secrets (double-check these aren't in .env files)
+secrets/
+*.secret
+credentials.json
+service-account.json
+
+# Session data
+sessions/
+*.session
+
+# ─── Build Artifacts ──────────────────────────────────────────────────────────
+*.o
+*.a
+*.so
+*.exe
+*.dll
+*.dylib
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# ─── Miscellaneous ────────────────────────────────────────────────────────────
+# Webpack
+.webpack/
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# Serverless directories
+.serverless/
+
+# FuseBox cache
+.fusebox/
+
+# DynamoDB Local files
+.dynamodb/
+
+# TernJS port file
+.tern-port
+
+# Stores VSCode versions used for testing VSCode extensions
+.vscode-test
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Ansible
+*.retry
+
+# ─── Project Specific ─────────────────────────────────────────────────────────
+# Test output files (keep templates, ignore actual test results)
+backend/test_*.json
+backend/*_test.json
+backend/fix_*.json
+backend/update_*.json
+
+# Except keep these test script files
+!backend/test_webhook.py
+!backend/setup_webhook.py
+!test_stripe_config.py
+
+# LocalTunnel
+.localtunnel/
+
+# Monitoring/Analytics
+.sentryclirc
+
+# ─── Keep These (Examples/Templates) ─────────────────────────────────────────
+!.env.example
+!.env.docker
+!.gitignore
+!README.md
+!UBUNTU_SETUP.md
+!STRIPE_SETUP.md
+!DOCKER_SETUP.md
+!DEPENDENCIES.md

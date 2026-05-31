@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: salesbot-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-changeme123}
+      MONGO_INITDB_DATABASE: sales_bot_usa
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+      - mongodb_config:/data/configdb
+    networks:
+      - salesbot-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/sales_bot_usa --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend/reception_labs
+      dockerfile: Dockerfile
+    container_name: salesbot-backend
+    restart: unless-stopped
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      # ElevenLabs
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY}
+      ELEVENLABS_WEBHOOK_SECRET: ${ELEVENLABS_WEBHOOK_SECRET}
+      ELEVENLABS_BASE_URL: ${ELEVENLABS_BASE_URL:-https://api.us.elevenlabs.io/v1}
+      
+      # Stripe
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET}
+      
+      # Frontend
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8080}
+      
+      # SMTP
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      SMTP_FROM: ${SMTP_FROM:-Sales Bot USA <support@2ndwaveai.com>}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      
+      # MongoDB
+      MONGODB_URI: mongodb://admin:${MONGO_PASSWORD:-changeme123}@mongodb:27017/sales_bot_usa?authSource=admin
+      MONGODB_DB: sales_bot_usa
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/reception_labs:/app
+      - backend_logs:/var/log/salesbot
+    networks:
+      - salesbot-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/system/info"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend (Nginx serving built React app)
+  frontend:
+    image: nginx:alpine
+    container_name: salesbot-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "8080:80"
+    volumes:
+      - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - salesbot-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  mongodb_data:
+    driver: local
+  mongodb_config:
+    driver: local
+  backend_logs:
+    driver: local
+
+networks:
+  salesbot-network:
+    driver: bridge

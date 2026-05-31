@@ -1,0 +1,119 @@
+# Backend - .gitignore
+# Python-specific ignores
+
+# ─── Python ───────────────────────────────────────────────────────────────────
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ─── Virtual Environments ─────────────────────────────────────────────────────
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+reception_labs/venv/
+
+# ─── Testing / Coverage ───────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# ─── Environment Variables ────────────────────────────────────────────────────
+*.env
+.env
+.env.local
+.env.*.local
+reception_labs/.env
+!.env.example
+
+# ─── Database Files (JSON mode) ───────────────────────────────────────────────
+reception_labs/clients.json
+reception_labs/plans.json
+reception_labs/sent_emails.json
+reception_labs/admins.json
+
+# Test JSON files (actual test data)
+test_*.json
+*_test.json
+fix_*.json
+update_*.json
+
+# But keep Python test files
+!test_*.py
+!*_test.py
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+*.log.*
+
+# ─── IDE / Editor ─────────────────────────────────────────────────────────────
+.vscode/*
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# ─── OS Specific ──────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ─── Type Checkers ────────────────────────────────────────────────────────────
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+
+# ─── Flask / Django ───────────────────────────────────────────────────────────
+instance/
+.webassets-cache
+db.sqlite3
+
+# ─── Jupyter Notebook ─────────────────────────────────────────────────────────
+.ipynb_checkpoints
+
+# ─── pyenv ────────────────────────────────────────────────────────────────────
+.python-version
+
+# ─── Celery ───────────────────────────────────────────────────────────────────
+celerybeat-schedule
+celerybeat.pid
+
+# ─── Backup Files ─────────────────────────────────────────────────────────────
+*.bak
+*.backup
+backups/
