@@ -99,14 +99,14 @@ export default function ClientsListPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Clients</h1>
+          <h1 className="text-xl md:text-2xl font-semibold text-foreground">Agents</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Manage all pest control companies using 2nd Wave AI.
+            Manage all AI receptionist agents for your clients.
           </p>
         </div>
         <Button onClick={() => setAddClientOpen(true)} size={isMobile ? "sm" : "default"}>
           <Plus className="w-4 h-4 mr-2" />
-          Add Client
+          Add Agent
         </Button>
       </div>
 
@@ -115,7 +115,7 @@ export default function ClientsListPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search clients by name or location..."
+            placeholder="Search agents by name or location..."
             className="pl-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -145,7 +145,7 @@ export default function ClientsListPage() {
       {clientsLoading && (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="w-6 h-6 animate-spin text-primary mr-2" />
-          <span className="text-sm text-muted-foreground">Loading clients...</span>
+          <span className="text-sm text-muted-foreground">Loading agents...</span>
         </div>
       )}
 
@@ -154,7 +154,7 @@ export default function ClientsListPage() {
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Building2 className="w-4 h-4 text-primary" />
-            <span>All Clients ({filteredClients.length})</span>
+            <span>All Agents ({filteredClients.length})</span>
           </div>
           {filteredClients.map((client) => {
             return (
@@ -215,7 +215,7 @@ export default function ClientsListPage() {
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-medium flex items-center gap-2">
               <Building2 className="w-4 h-4 text-primary" />
-            All Clients ({filteredClients.length})
+            All Agents ({filteredClients.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
