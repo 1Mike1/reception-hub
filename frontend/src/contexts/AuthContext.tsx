@@ -16,6 +16,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Check if Supabase is properly configured (not using dummy values)
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const isSupabaseConfigured = SUPABASE_URL && !SUPABASE_URL.includes('dummy') && supabase;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [userRole, setUserRole] = useState<'admin' | 'client' | null>(null);
@@ -26,6 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const lastFetchedUserIdRef = useRef<string | null>(null);
 
   const fetchUserRole = useCallback(async (userId: string): Promise<'admin' | 'client' | null> => {
+    if (!isSupabaseConfigured) return null;
+    
     try {
       const { data, error } = await supabase
         .from('user_roles')
@@ -46,6 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password: string): Promise<{ error: Error | null; role: 'admin' | 'client' | null }> => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Supabase not configured - use backend auth'), role: null };
+    }
+    
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
@@ -72,14 +82,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUserRole(null);
     lastFetchedUserIdRef.current = null;
     
-    // Then sign out from Supabase
-    await supabase.auth.signOut({ scope: 'global' });
+    // Then sign out from Supabase (if configured)
+    if (isSupabaseConfigured) {
+      await supabase.auth.signOut({ scope: 'global' });
+    }
     
     // Navigate after state is cleared
     navigate('/', { replace: true });
   }, [navigate]);
 
   const resetPassword = useCallback(async (email: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Password reset not available') };
+    }
+    
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
@@ -94,6 +110,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const updatePassword = useCallback(async (newPassword: string) => {
+    if (!isSupabaseConfigured) {
+      return { error: new Error('Password update not available') };
+    }
+    
     try {
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
@@ -106,6 +126,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    // Skip Supabase initialization if using dummy/backend-only auth
+    if (!isSupabaseConfigured) {
+      setIsLoading(false);
+      return;
+    }
+
     let mounted = true;
     let initializationComplete = false;
 
