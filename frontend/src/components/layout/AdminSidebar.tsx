@@ -27,7 +27,7 @@ import {
 
 const navigation = [
   { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
-  { name: 'Clients', href: '/admin/clients', icon: Building2, hasAddAction: true },
+  { name: 'Agents', href: '/admin/clients', icon: Building2, hasAddAction: true },
   { name: 'Call Logs', href: '/admin/calls', icon: Phone },
   { name: 'User Feedback', href: '/admin/feedback', icon: MessageSquare },
   { name: 'Audit Logs', href: '/admin/audit-logs', icon: History },
@@ -201,7 +201,7 @@ export function AdminSidebar({ onNavigate, onExpandedChange }: AdminSidebarProps
                         ? 'text-white hover:bg-white/20'
                         : 'text-neutral-500 hover:bg-neutral-200 hover:text-neutral-900 opacity-0 group-hover:opacity-100'
                     )}
-                    title="Add new client"
+                    title="Add new agent"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
